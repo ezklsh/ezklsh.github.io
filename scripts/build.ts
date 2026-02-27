@@ -12,6 +12,7 @@ type Post = {
   id: string;
   title: string;
   slug: string;
+  summary: string;
   content_html: string;
   published_at: string;
 };
@@ -32,7 +33,7 @@ const headers: Record<string, string> = {
     Accept: "application/json" 
 }
 
-const POST_URL = `${SUPABASE_URL}/rest/v1/blogs?select=title,slug,content_html,published_at&order=published_at.desc`
+const POST_URL = `${SUPABASE_URL}/rest/v1/blogs?select=title,slug,summary,content_html,published_at&order=published_at.desc`
 
 async function fetchPosts(): Promise<Post[]> {
     const resp = await fetch(POST_URL, { headers })
@@ -69,6 +70,8 @@ function renderPostPage(tpl: string, post: Post): string {
     const titleEsc = post.title
     return tpl
         .replaceAll("{{title}}", titleEsc)
+        .replaceAll("{{description}}", post.summary)
+        .replaceAll("{{slug}}", post.slug)
         .replaceAll("{{date}}", formatDate(post.published_at))
         .replaceAll("{{content}}", post.content_html)
 }
