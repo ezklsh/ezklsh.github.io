@@ -3,7 +3,7 @@
 // DONE: Render the blog index
 // DONE: Separate load template function
 // DONE: Copy default pages (e.g. index.html, about.html) to public/ 
-// TODO: Insert <base href="/ezkl.sh/"> into pages built for public/
+// KILL: Insert <base href="/ezkl.sh/"> into pages built for public/
 
 import { readFile, writeFile, mkdir, cp, rm, readdir } from "node:fs/promises"
 import { join } from "node:path";
