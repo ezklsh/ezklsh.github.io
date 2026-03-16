@@ -1,5 +1,23 @@
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 
+:root, [data-theme="light"] {
+  --bg: #ffffff;
+  --accent: #0000ee;
+  --accent-visited: #551a8b;
+  --code-bg: #edf1f5;
+  --pre-bg: #f2f2f2;;
+  --pre-border: #e6e6e6;
+}
+
+[data-theme="blue"] {
+  --bg: #0c0e6b;
+  --text: #e0dfe6;
+  --accent: #a5b4fc;
+  --code-bg: #171988;
+  --pre-bg: #0d1133;;
+  --pre-border: #1f1f9a;
+}
+
 .nav-inline {
   display: flex;
   align-items: center;
@@ -17,6 +35,8 @@ body {
   line-height: 1.4;
   text-align: justify;
   box-sizing: border-box;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .title {
@@ -38,9 +58,17 @@ body {
   border: 1px dashed;
 }
 
+a {
+  color: var(--accent);
+}
+
+a:visited {
+  color: var(--accent-visited);
+}
+
 code {
   font-family: monospace;
-  background-color: #edf1f5;
+  background-color: var(--code-bg);
   padding: 0 0.5em;
   border-radius: 3px;
   /* font-size: 0.95em; */
@@ -52,9 +80,9 @@ pre.src {
 }
 
 pre {
-  border: 1px solid #e6e6e6;
+  border: 1px solid var(--pre-border);
   border-radius: 3px;
-  background-color: #f2f2f2;
+  background-color: var(--pre-bg);
   padding: 8pt;
   font-family: monospace;
   overflow: auto;
