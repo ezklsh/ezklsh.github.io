@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap");
 
 .nav-inline {
   display: flex;
@@ -12,11 +12,20 @@ body {
   width: 100%;
   margin: 0 auto;
   padding: 24px 16px;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Noto Serif JP", Georgia, serif;
   font-size: small;
   line-height: 1.4;
   text-align: justify;
   box-sizing: border-box;
+}
+
+/* the mono face gave the blog list a fixed grid: every date was the same
+   width and one space was a full 0.6em cell. a proportional mincho has
+   proportional figures and a 0.26em space, so restore the column here. */
+li > i.muted {
+  display: inline-block;
+  min-width: 6.15em;
+  margin-right: 0.15em;
 }
 
 .title {
