@@ -114,7 +114,7 @@ const ROW = {
     maxH: 0.5,
     minW: 0.25, // narrowest a single photo may get
     maxW: 0.66,
-    maxPerRow: 3,
+    maxPerRow: 2, // pairs only: a third cell shrinks every photo on the row
 }
 
 // Segment the list (in order) into rows, minimising a penalty over row height
