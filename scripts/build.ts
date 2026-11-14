@@ -104,16 +104,29 @@ function formatDate(iso: string): string {
     return `${mon} ${day}, ${year}`
 }
 
+const PER_ROW = 3
+
 function renderGallery(photos: GalleryPhoto[]): string {
-    return photos
-        .map(
-            (p) => `
-        <figure class="photo">
-          <img src="{{root}}${p.thumb}" width="${p.w}" height="${p.h}" loading="lazy" decoding="async"
-               alt="${p.alt || `${p.date} ${p.camera}`.trim()}">
-        </figure>`,
-        )
-        .join("")
+    const rows: GalleryPhoto[][] = []
+    for (let i = 0; i < photos.length; i += PER_ROW) rows.push(photos.slice(i, i + PER_ROW))
+
+    // Rows are emitted left to right so the reading order matches the numbers.
+    // Inside a row, each cell grows in proportion to its aspect ratio, which
+    // makes every photo in that row the same height without cropping.
+    return rows
+        .map((row) => {
+            const partial = row.length < PER_ROW ? " row--partial" : ""
+            const cells = row
+                .map(
+                    (p) => `<figure class="photo" style="--ar:${(p.w / p.h).toFixed(4)}">
+            <img src="{{root}}${p.thumb}" width="${p.w}" height="${p.h}" loading="lazy" decoding="async"
+                 alt="${p.alt || `${p.date} ${p.camera}`.trim()}">
+          </figure>`,
+                )
+                .join("")
+            return `<div class="row${partial}">${cells}</div>`
+        })
+        .join("\n")
 }
 
 // Main build

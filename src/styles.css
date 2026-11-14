@@ -96,14 +96,28 @@ pre {
 }
 
 .album {
-  column-count: 3;
-  column-gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   margin: 0;
 }
 
+.row {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+}
+
+/* grow in proportion to aspect ratio: equal heights across the row */
 .album .photo {
-  break-inside: avoid;
-  margin: 0 0 4px;
+  flex: var(--ar) 1 0;
+  min-width: 0;
+  margin: 0;
+}
+
+/* a short final row keeps third-width cells instead of stretching */
+.row--partial .photo {
+  flex: 0 0 calc((100% - 8px) / 3);
 }
 
 .album .photo img {
@@ -112,14 +126,17 @@ pre {
   height: auto;
 }
 
-@media (max-width: 800px) {
-  .album {
-    column-count: 2;
-  }
-}
-
 @media (max-width: 520px) {
-  .album {
-    column-count: 1;
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .album .photo,
+  .row--partial .photo {
+    flex: 0 0 100%;
+  }
+
+  .album .photo img {
+    height: auto;
   }
 }
