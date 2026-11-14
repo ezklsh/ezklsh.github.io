@@ -24,7 +24,6 @@ type GalleryPhoto = {
   w: number;
   h: number;
   thumb: string;
-  full: string;
   alt: string;
 };
 

@@ -14,10 +14,10 @@ const run = promisify(execFile)
 const SRC = process.env.GALLERY_SRC ?? `${process.env.HOME}/Documents/Images/gallery`
 const OUT = "src/assets/photos"
 const TMP = join(OUT, ".tmp")
-const SIZES = [
-  { suffix: "900", long: 900 },
-  { suffix: "1800", long: 1800 },
-] as const
+// One size only: the grid tops out around 227px wide, so 900px on the long edge
+// covers retina at the widest column. Bumping this is a one-line change if a
+// full-size view ever comes back.
+const LONG = 900
 
 // EXIF orientation -> clockwise degrees needed to make the pixels upright.
 const ROTATION: Record<number, number> = { 1: 0, 3: 180, 6: 90, 8: 270 }
@@ -29,10 +29,7 @@ type Photo = {
   camera: string
   w: number
   h: number
-  fullW: number
-  fullH: number
   thumb: string
-  full: string
   alt: string
 }
 
@@ -134,13 +131,9 @@ for (const file of files) {
   if ((deg === 90 || deg === 270) && w >= h)
     throw new Error(`${file}: expected portrait after ${deg}° rotation, got ${w}x${h}`)
 
-  const thumb = scale(w, h, SIZES[0].long)
-  const full = scale(w, h, SIZES[1].long)
-  for (const { suffix, long } of SIZES) {
-    const target = join(OUT, `${id}-${suffix}.webp`)
-    const resize = w >= h ? ["-resize", String(long), "0"] : ["-resize", "0", String(long)]
-    await run("cwebp", ["-q", "78", "-m", "6", ...resize, upright, "-o", target])
-  }
+  const thumb = scale(w, h, LONG)
+  const resize = w >= h ? ["-resize", String(LONG), "0"] : ["-resize", "0", String(LONG)]
+  await run("cwebp", ["-q", "78", "-m", "6", ...resize, upright, "-o", join(OUT, `${id}-900.webp`)])
 
   const raw = exif.datetime ?? ""
   photos.push({
@@ -150,10 +143,7 @@ for (const file of files) {
     camera: CAMERA[exif.model ?? ""] ?? exif.model ?? "",
     w: thumb.w,
     h: thumb.h,
-    fullW: full.w,
-    fullH: full.h,
     thumb: `assets/photos/${id}-900.webp`,
-    full: `assets/photos/${id}-1800.webp`,
     alt: "",
   })
 }
