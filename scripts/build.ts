@@ -7,7 +7,6 @@
 
 import { readFile, writeFile, mkdir, cp, rm, readdir } from "node:fs/promises"
 import { join } from "node:path";
-import { layoutOrder } from "./layout"
 
 type Post = {
   id: string;
@@ -106,7 +105,7 @@ function formatDate(iso: string): string {
 }
 
 function renderGallery(photos: GalleryPhoto[]): string {
-    return layoutOrder(photos)
+    return photos
         .map(
             (p) => `
         <figure class="photo">

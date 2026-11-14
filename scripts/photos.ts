@@ -8,7 +8,6 @@ import { readdir, mkdir, writeFile, rm } from "node:fs/promises"
 import { join, basename, extname } from "node:path"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { layoutOrder } from "./layout"
 
 const run = promisify(execFile)
 
@@ -144,17 +143,14 @@ for (const file of files) {
   })
 }
 
-// Date order first, so numbering starts from a deterministic sequence; the
-// layout search then permutes both the filenames and the page together.
+// Numbering is chronological: 01 is the oldest photo, and the page follows the
+// same order, so a number tells you where a photo sits without a search.
 uprights.sort((a, b) => a.date.localeCompare(b.date) || a.file.localeCompare(b.file))
-
-// Number files in the order they appear on the page, so 01.webp is the first
-// tile. The gallery and the build share this ordering (scripts/layout.ts).
 const pad = Math.max(2, String(uprights.length).length)
 
 // pass two: encode 01.webp, 02.webp, …
 const photos: Photo[] = []
-for (const [i, u] of layoutOrder(uprights).entries()) {
+for (const [i, u] of uprights.entries()) {
   const id = String(i + 1).padStart(pad, "0")
   const dim = scale(u.w, u.h, LONG)
   const resize = u.w >= u.h ? ["-resize", String(LONG), "0"] : ["-resize", "0", String(LONG)]
