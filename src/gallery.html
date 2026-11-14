@@ -30,8 +30,13 @@
       </nav>
     </header>
     <main>
-      <h2>gallery</h2>
-      <p>some photos i've taken</p>
+      <div class="gallery-head">
+        <h2>gallery</h2>
+        <span class="gallery-meta"><span class="gallery-label">写真</span> <span id="gallery-count">24 枚</span></span>
+      </div>
+      <div class="album" id="album">
+        {{photos}}
+      </div>
     </main>
     <footer></footer>
   </body>

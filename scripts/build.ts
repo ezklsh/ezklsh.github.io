@@ -17,6 +17,17 @@ type Post = {
   published_at: string;
 };
 
+type GalleryPhoto = {
+  id: string;
+  date: string;
+  camera: string;
+  w: number;
+  h: number;
+  thumb: string;
+  full: string;
+  alt: string;
+};
+
 const OUT_DIR = process.env.OUT_DIR ??  "site"
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
@@ -94,6 +105,39 @@ function formatDate(iso: string): string {
     return `${mon} ${day}, ${year}`
 }
 
+// CSS columns balances by height, so a clump of portraits strands the last column.
+// Spread them through the landscapes instead of shipping the chronological order.
+function layoutOrder(photos: GalleryPhoto[]): GalleryPhoto[] {
+    const portraits = photos.filter((p) => p.h > p.w)
+    const landscapes = photos.filter((p) => p.h <= p.w)
+    const out: GalleryPhoto[] = []
+    let next = 0
+    landscapes.forEach((p, i) => {
+        out.push(p)
+        if ((i + 1) % 3 === 0) {
+            const portrait = portraits[next]
+            if (portrait) {
+                out.push(portrait)
+                next++
+            }
+        }
+    })
+    for (const portrait of portraits.slice(next)) out.push(portrait)
+    return out
+}
+
+function renderGallery(photos: GalleryPhoto[]): string {
+    return layoutOrder(photos)
+        .map(
+            (p) => `
+        <figure class="photo">
+          <img src="{{root}}${p.thumb}" width="${p.w}" height="${p.h}" loading="lazy" decoding="async"
+               alt="${p.alt || `${p.date} ${p.camera}`.trim()}">
+        </figure>`,
+        )
+        .join("")
+}
+
 // Main build
 (async function build () {
     console.log("Building site from Supabase...")
@@ -126,6 +170,17 @@ function formatDate(iso: string): string {
         recursive: true,
         filter: (src) => !src.includes("templates")
     })
+
+    // gallery: inline the photo manifest
+    const manifest = await Bun.file("src/assets/photos/manifest.json").json() as { photos: GalleryPhoto[] }
+    const galleryPath = join(OUT_DIR, "gallery.html")
+    const galleryHtml = await readFile(galleryPath, "utf-8")
+    await writeFile(
+        galleryPath,
+        injectBaseUrl(galleryHtml.replace("{{photos}}", renderGallery(manifest.photos)), baseUrl),
+        "utf-8"
+    )
+    console.log(`✓ gallery (${manifest.photos.length} photos)`)
 
     if (baseUrl) {
         const files = await readdir(OUT_DIR, {withFileTypes: true})
