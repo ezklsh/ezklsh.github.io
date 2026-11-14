@@ -17,6 +17,16 @@ type Post = {
   published_at: string;
 };
 
+type GalleryPhoto = {
+  id: string;
+  date: string;
+  camera: string;
+  w: number;
+  h: number;
+  thumb: string;
+  alt: string;
+};
+
 const OUT_DIR = process.env.OUT_DIR ??  "site"
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
@@ -94,6 +104,81 @@ function formatDate(iso: string): string {
     return `${mon} ${day}, ${year}`
 }
 
+// Bounds are fractions of the row width, so they hold at every viewport size.
+// A row of three 3:2 photos lands at 0.22 of the width in height — a strip —
+// while mixing a portrait in makes one cell a sliver. Both are rejected here,
+// which is why some rows hold two photos and others three.
+const ROW = {
+    targetH: 0.34, // ~234px at the 688px column
+    minH: 0.26, // a row shorter than this reads as a strip
+    maxH: 0.5,
+    minW: 0.25, // narrowest a single photo may get
+    maxW: 0.66,
+    maxPerRow: 2, // pairs only: a third cell shrinks every photo on the row
+}
+
+// Segment the list (in order) into rows, minimising a penalty over row height
+// and per-cell width. Order is preserved; only the number of photos per row
+// varies.
+function groupRows(photos: GalleryPhoto[]): GalleryPhoto[][] {
+    const n = photos.length
+    if (n === 0) return []
+    const ar = photos.map((p) => p.w / p.h)
+
+    const price = (from: number, to: number) => {
+        const k = to - from + 1
+        let sum = 0
+        for (let t = from; t <= to; t++) sum += ar[t] as number
+        const h = 1 / sum
+        let cost = (Math.abs(h - ROW.targetH) / ROW.targetH) * 2
+        if (h < ROW.minH) cost += ((ROW.minH - h) / ROW.minH) * 3
+        if (h > ROW.maxH) cost += ((h - ROW.maxH) / ROW.maxH) * 6
+        for (let t = from; t <= to; t++) {
+            const frac = (ar[t] as number) / sum
+            if (frac < ROW.minW) cost += ((ROW.minW - frac) / ROW.minW) * 20
+            if (frac > ROW.maxW) cost += ((frac - ROW.maxW) / ROW.maxW) * 6
+        }
+        return cost
+    }
+
+    const best = new Array<number>(n + 1).fill(Infinity)
+    const cut = new Array<number>(n + 1).fill(0)
+    best[0] = 0
+    for (let end = 1; end <= n; end++) {
+        for (let k = 1; k <= ROW.maxPerRow && end - k >= 0; k++) {
+            const total = (best[end - k] as number) + price(end - k, end - 1)
+            if (total < (best[end] as number)) {
+                best[end] = total
+                cut[end] = end - k
+            }
+        }
+    }
+
+    const rows: GalleryPhoto[][] = []
+    for (let end = n; end > 0; end = cut[end] as number) rows.unshift(photos.slice(cut[end], end))
+    return rows
+}
+
+function renderGallery(photos: GalleryPhoto[]): string {
+    // Rows are emitted left to right so the reading order matches the numbers.
+    // Inside a row, each cell grows in proportion to its aspect ratio, which
+    // makes every photo in that row the same height without cropping.
+    return groupRows(photos)
+        .map((row) => {
+            const kind = row.length === 1 ? " row--single" : row.length === 2 ? " row--pair" : ""
+            const cells = row
+                .map(
+                    (p) => `<figure class="photo" style="--ar:${(p.w / p.h).toFixed(4)}">
+            <img src="{{root}}${p.thumb}" width="${p.w}" height="${p.h}" loading="lazy" decoding="async"
+                 alt="${p.alt || `${p.date} ${p.camera}`.trim()}">
+          </figure>`,
+                )
+                .join("")
+            return `<div class="row${kind}">${cells}</div>`
+        })
+        .join("\n")
+}
+
 // Main build
 (async function build () {
     console.log("Building site from Supabase...")
@@ -126,6 +211,22 @@ function formatDate(iso: string): string {
         recursive: true,
         filter: (src) => !src.includes("templates")
     })
+
+    // gallery: inline the photo manifest
+    const manifest = await Bun.file("src/assets/photos/manifest.json").json() as { photos: GalleryPhoto[] }
+    const galleryPath = join(OUT_DIR, "gallery.html")
+    const galleryHtml = await readFile(galleryPath, "utf-8")
+    await writeFile(
+        galleryPath,
+        injectBaseUrl(
+            galleryHtml
+                .replace("{{photos}}", renderGallery(manifest.photos))
+                .replace("{{count}}", `${manifest.photos.length} 枚`),
+            baseUrl
+        ),
+        "utf-8"
+    )
+    console.log(`✓ gallery (${manifest.photos.length} photos)`)
 
     if (baseUrl) {
         const files = await readdir(OUT_DIR, {withFileTypes: true})

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "OUT_DIR=public bun scripts/build.ts",
     "build:local": "OUT_DIR=site bun scripts/build.ts",
-    "dev": "bun ./scripts/dev-server.ts"
+    "dev": "bun ./scripts/dev-server.ts",
+    "photos": "bun scripts/photos.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

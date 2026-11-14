@@ -69,3 +69,84 @@ pre {
   overflow: auto;
   margin: 1.2em;
 }
+
+/* ============ gallery ============ */
+
+.gallery-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 24px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e6e1d6;
+}
+
+.gallery-head h2 {
+  margin: 0;
+}
+
+.gallery-meta {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: #8a8378;
+}
+
+.gallery-label {
+  letter-spacing: 0.3em;
+}
+
+.album {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+}
+
+/* grow in proportion to aspect ratio: equal heights across the row */
+.album .photo {
+  flex: var(--ar) 1 0;
+  min-width: 0;
+  margin: 0;
+  /* reserve the box from the manifest ratio so rows do not jump on a slow
+     connection, before the image itself has decoded */
+  aspect-ratio: var(--ar);
+}
+
+/* a lone final photo keeps a sane size instead of filling the row */
+.row--single .photo {
+  flex: 0 0 60%;
+}
+
+.album .photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 520px) {
+  /* keep the pair grid on phones: cells are ratios of the container, so a
+     two-up row still works down to ~340px. the album stays inside the page
+     margin so the photos line up with the text column above them. */
+  .album,
+  .row {
+    gap: 3px;
+  }
+}
+
+/* below this a two-up grid is narrower than a thumbnail; go single column */
+@media (max-width: 340px) {
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .album .photo,
+  .row--single .photo {
+    flex: 0 0 100%;
+  }
+}
