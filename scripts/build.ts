@@ -105,25 +105,65 @@ function formatDate(iso: string): string {
     return `${mon} ${day}, ${year}`
 }
 
-// CSS columns balances by height, so a clump of portraits strands the last column.
-// Spread them through the landscapes instead of shipping the chronological order.
+// CSS columns splits the list into consecutive runs and balances them by height,
+// so only the *order* is under our control. Search for the order whose best
+// sequential cut is the most even — at three columns for desktop, and two for
+// tablets, weighted lower so the desktop split wins.
 function layoutOrder(photos: GalleryPhoto[]): GalleryPhoto[] {
-    const portraits = photos.filter((p) => p.h > p.w)
-    const landscapes = photos.filter((p) => p.h <= p.w)
-    const out: GalleryPhoto[] = []
-    let next = 0
-    landscapes.forEach((p, i) => {
-        out.push(p)
-        if ((i + 1) % 3 === 0) {
-            const portrait = portraits[next]
-            if (portrait) {
-                out.push(portrait)
-                next++
+    const aspect = (p: GalleryPhoto) => p.h / p.w
+    const n = photos.length
+    if (n < 4) return photos
+
+    // best spread over k consecutive groups: brute force every cut set
+    const spread = (order: GalleryPhoto[], k: number) => {
+        const a = order.map(aspect)
+        const sums = (cuts: number[]) => {
+            const groups: number[] = []
+            let start = 0
+            for (const c of [...cuts, a.length]) {
+                groups.push(a.slice(start, c).reduce((s, v) => s + v, 0))
+                start = c
             }
+            return groups
         }
-    })
-    for (const portrait of portraits.slice(next)) out.push(portrait)
-    return out
+        let best = Infinity
+        if (k === 2) {
+            for (let i = 1; i < a.length; i++) {
+                const g = sums([i])
+                best = Math.min(best, Math.max(...g) - Math.min(...g))
+            }
+        } else {
+            for (let i = 1; i < a.length - 1; i++)
+                for (let j = i + 1; j < a.length; j++) {
+                    const g = sums([i, j])
+                    best = Math.min(best, Math.max(...g) - Math.min(...g))
+                }
+        }
+        return best
+    }
+
+    const cost = (order: GalleryPhoto[]) => spread(order, 3) + 0.5 * spread(order, 2)
+
+    let best = [...photos]
+    let bestCost = cost(best)
+    for (let pass = 0; pass < 8; pass++) {
+        let improved = false
+        for (let i = 0; i < n; i++)
+            for (let j = i + 1; j < n; j++) {
+                const candidate = [...best]
+                const [a, b] = [candidate[i], candidate[j]] as [GalleryPhoto, GalleryPhoto]
+                candidate[i] = b
+                candidate[j] = a
+                const c = cost(candidate)
+                if (c < bestCost - 1e-6) {
+                    best = candidate
+                    bestCost = c
+                    improved = true
+                }
+            }
+        if (!improved) break
+    }
+    return best
 }
 
 function renderGallery(photos: GalleryPhoto[]): string {
@@ -177,7 +217,12 @@ function renderGallery(photos: GalleryPhoto[]): string {
     const galleryHtml = await readFile(galleryPath, "utf-8")
     await writeFile(
         galleryPath,
-        injectBaseUrl(galleryHtml.replace("{{photos}}", renderGallery(manifest.photos)), baseUrl),
+        injectBaseUrl(
+            galleryHtml
+                .replace("{{photos}}", renderGallery(manifest.photos))
+                .replace("{{count}}", `${manifest.photos.length} 枚`),
+            baseUrl
+        ),
         "utf-8"
     )
     console.log(`✓ gallery (${manifest.photos.length} photos)`)
