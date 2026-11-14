@@ -115,9 +115,9 @@ pre {
   margin: 0;
 }
 
-/* a short final row keeps third-width cells instead of stretching */
-.row--partial .photo {
-  flex: 0 0 calc((100% - 8px) / 3);
+/* a lone final photo keeps a sane size instead of filling the row */
+.row--single .photo {
+  flex: 0 0 60%;
 }
 
 .album .photo img {
@@ -132,7 +132,7 @@ pre {
   }
 
   .album .photo,
-  .row--partial .photo {
+  .row--single .photo {
     flex: 0 0 100%;
   }
 
