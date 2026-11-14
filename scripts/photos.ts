@@ -8,6 +8,7 @@ import { readdir, mkdir, writeFile, rm } from "node:fs/promises"
 import { join, basename, extname } from "node:path"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
+import { layoutOrder } from "./layout"
 
 const run = promisify(execFile)
 
@@ -111,8 +112,11 @@ await rm(OUT, { recursive: true, force: true })
 await mkdir(TMP, { recursive: true })
 
 const files = (await readdir(SRC)).filter((f) => /\.jpe?g$/i.test(f)).sort()
-const photos: Photo[] = []
 
+type Upright = { file: string; tmp: string; date: string; camera: string; w: number; h: number }
+const uprights: Upright[] = []
+
+// pass one: read EXIF, bake the rotation into a temp copy
 for (const file of files) {
   const src = join(SRC, file)
   const exif = readExif(Buffer.from(await Bun.file(src).arrayBuffer()))
@@ -121,34 +125,54 @@ for (const file of files) {
   if (deg === undefined)
     throw new Error(`${file}: unsupported EXIF orientation ${orientation} (mirrored variants are not handled)`)
 
-  const id = basename(file, extname(file)).toLowerCase().replace(/[^a-z0-9]+/g, "-")
-  const upright = join(TMP, `${id}.jpg`)
+  const tmp = join(TMP, basename(file, extname(file)).replace(/[^\w.-]+/g, "-") + ".jpg")
+  if (deg) await run("sips", ["-r", String(deg), src, "--out", tmp])
+  else await run("sips", ["-s", "format", "jpeg", "-s", "formatOptions", "95", src, "--out", tmp])
 
-  if (deg) await run("sips", ["-r", String(deg), src, "--out", upright])
-  else await run("sips", ["-s", "format", "jpeg", "-s", "formatOptions", "95", src, "--out", upright])
-
-  const { w, h } = await dims(upright)
+  const { w, h } = await dims(tmp)
   if ((deg === 90 || deg === 270) && w >= h)
     throw new Error(`${file}: expected portrait after ${deg}° rotation, got ${w}x${h}`)
 
-  const thumb = scale(w, h, LONG)
-  const resize = w >= h ? ["-resize", String(LONG), "0"] : ["-resize", "0", String(LONG)]
-  await run("cwebp", ["-q", "78", "-m", "6", ...resize, upright, "-o", join(OUT, `${id}-900.webp`)])
-
   const raw = exif.datetime ?? ""
-  photos.push({
-    id,
+  uprights.push({
     file,
+    tmp,
     date: raw ? raw.slice(0, 10).replace(/:/g, "-") : "",
     camera: CAMERA[exif.model ?? ""] ?? exif.model ?? "",
-    w: thumb.w,
-    h: thumb.h,
-    thumb: `assets/photos/${id}-900.webp`,
+    w,
+    h,
+  })
+}
+
+// Date order first, so numbering starts from a deterministic sequence; the
+// layout search then permutes both the filenames and the page together.
+uprights.sort((a, b) => a.date.localeCompare(b.date) || a.file.localeCompare(b.file))
+
+// Number files in the order they appear on the page, so 01.webp is the first
+// tile. The gallery and the build share this ordering (scripts/layout.ts).
+const pad = Math.max(2, String(uprights.length).length)
+
+// pass two: encode 01.webp, 02.webp, …
+const photos: Photo[] = []
+for (const [i, u] of layoutOrder(uprights).entries()) {
+  const id = String(i + 1).padStart(pad, "0")
+  const dim = scale(u.w, u.h, LONG)
+  const resize = u.w >= u.h ? ["-resize", String(LONG), "0"] : ["-resize", "0", String(LONG)]
+  await run("cwebp", ["-q", "78", "-m", "6", ...resize, u.tmp, "-o", join(OUT, `${id}.webp`)])
+
+  photos.push({
+    id,
+    file: u.file,
+    date: u.date,
+    camera: u.camera,
+    w: dim.w,
+    h: dim.h,
+    thumb: `assets/photos/${id}.webp`,
     alt: "",
   })
 }
 
-photos.sort((a, b) => a.date.localeCompare(b.date) || a.file.localeCompare(b.file))
+// already in date order, since the numbering derived from it
 await rm(TMP, { recursive: true, force: true })
 await writeFile(
   join(OUT, "manifest.json"),
